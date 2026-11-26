@@ -1,11 +1,14 @@
-
-name: TeamProTalisman
-version: '1.1.0'
-main: com.example.talisman.TeamProTalisman
-api-version: '1.20'
+name: TeamProCheck
+version: 1.0.0
+main: com.example.check.TeamProCheck
+api-version: 1.13
+description: Проверка игроков на читы
 commands:
-  talisman:
-    description: Талисманы Team Pro
-    usage: /talisman [give <ник> [тип] | test]
-  sphere:
-    description: Создаёт сферу из частиц вокруг игрока
+  freze:
+    description: Вызвать игрока на проверку
+    usage: /freze <ник>
+    aliases: [c]
+  unfreze:
+    description: Снять игрока с проверки
+    usage: /unfreze <ник>
+    aliases: [unc]
