@@ -1,107 +1,63 @@
-package com.example.talisman;
+package com.example.check;
 
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
-import org.bukkit.Particle;
-import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
-public class TeamProTalisman extends JavaPlugin {
+public class TeamProCheck extends JavaPlugin implements Listener {
 
-    // ====== НАСТРОЙКИ (меняй эти числа) ======
-    int refreshTicks = 20;       // раз в сколько тиков обновлять эффекты (20 тиков = 1 секунда)
-    double sphereRadius = 5.0;   // радиус сферы из частиц
-    // ==========================================
+    // замороженный игрок -> UUID админа, который его вызвал
+    Map<UUID, UUID> frozen = new HashMap<>();
 
     @Override
     public void onEnable() {
-        getLogger().info("Team Pro Talismans включён!");
+        getServer().getPluginManager().registerEvents(this, this);
+        getLogger().info("Team Pro Проверка включён!");
 
-        // каждые refreshTicks проверяем руки игроков и даём эффекты
-        getServer().getScheduler().runTaskTimer(this, () -> {
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                applyHeld(p);
+        // каждые 5 секунд показываем замороженным экран проверки заново
+        Bukkit.getScheduler().runTaskTimer(this, () -> {
+            for (UUID id : frozen.keySet()) {
+                Player p = Bukkit.getPlayer(id);
+                if (p != null) {
+                    showScreen(p);
+                }
             }
-        }, 0L, refreshTicks);
+        }, 0L, 100L);
     }
 
-    ItemStack makeTalisman(Material material, String name, String lore, String color) {
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(color + name);
-        List<String> l = new ArrayList<>();
-        l.add("§7" + lore);
-        l.add("§8Держи в руке — эффекты действуют сами");
-        meta.setLore(l);
-        item.setItemMeta(meta);
-        return item;
+    void showScreen(Player p) {
+        p.sendTitle("§c§lПРОВЕРКА НА ЧИТЫ",
+                "§fСкачай AnyDesk: §bhttps://anydesk.com/ru", 10, 130, 10);
     }
 
-    void giveTalisman(Player p, String type) {
-        ItemStack t;
-        if (type.equalsIgnoreCase("luck")) {
-            t = makeTalisman(Material.GHAST_TEAR, "Талисман удачи", "Скорость и прыгучесть", "§d");
-        } else if (type.equalsIgnoreCase("power")) {
-            t = makeTalisman(Material.FIRE_CHARGE, "Талисман силы", "Сила и регенерация", "§c");
-        } else if (type.equalsIgnoreCase("speed")) {
-            t = makeTalisman(Material.SNOWBALL, "Талисман скорости", "Ускорение и невесомость", "§b");
-        } else if (type.equalsIgnoreCase("jump")) {
-            t = makeTalisman(Material.SLIME_BALL, "Талисман прыжков", "Высокие прыжки и мягкое падение", "§a");
-        } else if (type.equalsIgnoreCase("night")) {
-            t = makeTalisman(Material.ENDER_PEARL, "Талисман ночного зрения", "Видно в темноте", "§5");
-        } else if (type.equalsIgnoreCase("fire")) {
-            t = makeTalisman(Material.MAGMA_CREAM, "Талисман огнеупорности", "Огонь не вредит", "§6");
-        } else if (type.equalsIgnoreCase("water")) {
-            t = makeTalisman(Material.HEART_OF_THE_SEA, "Талисман морей", "Дыхание под водой и плавание", "§3");
-        } else {
-            t = makeTalisman(Material.GHAST_TEAR, "Талисман удачи", "Скорость и прыгучесть", "§d");
-        }
-        p.getInventory().addItem(t);
+    void freeze(Player admin, Player target) {
+        frozen.put(target.getUniqueId(), admin.getUniqueId());
+        showScreen(target);
+        target.sendMessage("§c§lВы вызваны на проверку на читы!");
+        target.sendMessage("§fСкачай программу AnyDesk: §bhttps://anydesk.com/ru");
+        target.sendMessage("§7Пиши в чат — твои сообщения увидит только проверяющий.");
+        admin.sendMessage("§aИгрок " + target.getName() + " вызван на проверку.");
+        admin.sendMessage("§7Его сообщения в чате будут приходить тебе.");
     }
 
-    void applyEffect(Player p, PotionEffectType type, int level) {
-        // 400 тиков = 20 секунд с запасом, эффект обновляется каждую секунду
-        p.addPotionEffect(new PotionEffect(type, 400, level, true, false, true));
-    }
-
-    void applyHeld(Player p) {
-        checkHand(p, p.getInventory().getItemInMainHand());
-        checkHand(p, p.getInventory().getItemInOffHand());
-    }
-
-    void checkHand(Player p, ItemStack item) {
-        if (item == null || !item.hasItemMeta()) return;
-        String name = item.getItemMeta().getDisplayName();
-        if (name.contains("удачи")) {
-            applyEffect(p, PotionEffectType.SPEED, 0);
-            applyEffect(p, PotionEffectType.JUMP, 0);
-        } else if (name.contains("силы")) {
-            applyEffect(p, PotionEffectType.INCREASE_DAMAGE, 0);
-            applyEffect(p, PotionEffectType.REGENERATION, 0);
-        } else if (name.contains("скорости")) {
-            applyEffect(p, PotionEffectType.SPEED, 1);
-            applyEffect(p, PotionEffectType.SLOW_FALLING, 0);
-        } else if (name.contains("прыжков")) {
-            applyEffect(p, PotionEffectType.JUMP, 1);
-            applyEffect(p, PotionEffectType.SLOW_FALLING, 0);
-        } else if (name.contains("ночного")) {
-            applyEffect(p, PotionEffectType.NIGHT_VISION, 0);
-        } else if (name.contains("огнеупорности")) {
-            applyEffect(p, PotionEffectType.FIRE_RESISTANCE, 0);
-        } else if (name.contains("морей")) {
-            applyEffect(p, PotionEffectType.WATER_BREATHING, 0);
-            applyEffect(p, PotionEffectType.DOLPHINS_GRACE, 0);
-        }
+    void unfreeze(Player admin, Player target) {
+        frozen.remove(target.getUniqueId());
+        target.sendTitle("§a§lПРОВЕРКА ПРОЙДЕНА", "§fПриятной игры!", 10, 60, 10);
+        target.sendMessage("§aС тебя снята проверка. Приятной игры!");
+        admin.sendMessage("§aИгрок " + target.getName() + " снят с проверки.");
     }
 
     @Override
@@ -112,73 +68,117 @@ public class TeamProTalisman extends JavaPlugin {
         }
         Player p = (Player) sender;
 
-        if (command.getName().equalsIgnoreCase("sphere")) {
-            int segments = 24;
-            double step = (2 * Math.PI) / segments;
-            for (int i = 0; i < segments; i++) {
-                double theta = i * step;
-                for (int j = 0; j < segments; j++) {
-                    double phi = j * step;
-                    double x = sphereRadius * Math.sin(phi) * Math.cos(theta);
-                    double y = sphereRadius * Math.sin(phi) * Math.sin(theta) + 2;
-                    double z = sphereRadius * Math.cos(phi);
-                    p.getWorld().spawnParticle(Particle.END_ROD, p.getLocation().clone().add(x, y, z), 1);
-                }
-            }
-            p.sendMessage("§aСфера создана!");
+        if (!p.isOp()) {
+            p.sendMessage("§cУ тебя нет прав для этой команды.");
             return true;
         }
 
-        if (command.getName().equalsIgnoreCase("talisman")) {
-            if (args.length == 0) {
-                giveTalisman(p, "luck");
-                p.sendMessage("§aТалисман выдан! Возьми его в руку — эффекты включатся сами.");
+        if (command.getName().equalsIgnoreCase("freze")) {
+            if (args.length < 1) {
+                p.sendMessage("§cИспользование: /freze <ник>");
                 return true;
             }
-            String sub = args[0].toLowerCase();
-
-            if (sub.equals("give")) {
-                if (args.length < 2) {
-                    p.sendMessage("§cИспользование: /talisman give <ник> [тип]");
-                    return true;
-                }
-                Player target = Bukkit.getPlayerExact(args[1]);
-                if (target == null) {
-                    p.sendMessage("§cИгрок " + args[1] + " не найден или не в сети.");
-                    return true;
-                }
-                String type = args.length >= 3 ? args[2] : "luck";
-                giveTalisman(target, type);
-                p.sendMessage("§aТалисман выдан игроку " + target.getName() + ".");
-                target.sendMessage("§dТебе выдали талисман!");
+            Player target = Bukkit.getPlayerExact(args[0]);
+            if (target == null) {
+                p.sendMessage("§cИгрок " + args[0] + " не найден или не в сети.");
                 return true;
             }
-
-            if (sub.equals("test")) {
-                giveTalisman(p, "luck");
-                giveTalisman(p, "power");
-                giveTalisman(p, "speed");
-                giveTalisman(p, "jump");
-                giveTalisman(p, "night");
-                giveTalisman(p, "fire");
-                giveTalisman(p, "water");
-                p.sendMessage("§aТестовый набор выдан: все 7 талисманов!");
+            if (target == p) {
+                p.sendMessage("§cНельзя вызвать на проверку самого себя.");
                 return true;
             }
-
-            if (sub.equals("luck") || sub.equals("power") || sub.equals("speed")
-                    || sub.equals("jump") || sub.equals("night") || sub.equals("fire")
-                    || sub.equals("water")) {
-                giveTalisman(p, sub);
-                p.sendMessage("§aТалисман выдан!");
+            if (frozen.containsKey(target.getUniqueId())) {
+                p.sendMessage("§cЭтот игрок уже на проверке.");
                 return true;
             }
+            freeze(p, target);
+            return true;
+        }
 
-            p.sendMessage("§cПодкоманды: /talisman | /talisman give <ник> [тип] | /talisman test");
-            p.sendMessage("§7Типы: luck, power, speed, jump, night, fire, water");
+        if (command.getName().equalsIgnoreCase("unfreze")) {
+            if (args.length < 1) {
+                p.sendMessage("§cИспользование: /unfreze <ник>");
+                return true;
+            }
+            Player target = Bukkit.getPlayerExact(args[0]);
+            if (target == null) {
+                p.sendMessage("§cИгрок " + args[0] + " не найден или не в сети.");
+                return true;
+            }
+            if (!frozen.containsKey(target.getUniqueId())) {
+                p.sendMessage("§cЭтот игрок не на проверке.");
+                return true;
+            }
+            unfreeze(p, target);
             return true;
         }
 
         return false;
+    }
+
+    // замороженный игрок не может двигаться (поворачивать голову можно)
+    @EventHandler
+    public void onMove(PlayerMoveEvent e) {
+        if (frozen.containsKey(e.getPlayer().getUniqueId())) {
+            if (e.getFrom().getBlockX() != e.getTo().getBlockX()
+                    || e.getFrom().getBlockY() != e.getTo().getBlockY()
+                    || e.getFrom().getBlockZ() != e.getTo().getBlockZ()) {
+                e.setCancelled(true);
+            }
+        }
+    }
+
+    // сообщения замороженного игрока приходят только проверяющему
+    @EventHandler
+    public void onChat(AsyncPlayerChatEvent e) {
+        Player p = e.getPlayer();
+        UUID checkerId = frozen.get(p.getUniqueId());
+        if (checkerId == null) return;
+
+        e.setCancelled(true);
+        Player checker = Bukkit.getPlayer(checkerId);
+        if (checker != null) {
+            checker.sendMessage("§8[§cПроверка§8] §e" + p.getName() + "§7: §f" + e.getMessage());
+        }
+        p.sendMessage("§7Сообщение отправлено проверяющему.");
+    }
+
+    // замороженный игрок не может писать команды (личные сообщения можно)
+    @EventHandler
+    public void onCommand(PlayerCommandPreprocessEvent e) {
+        Player p = e.getPlayer();
+        if (!frozen.containsKey(p.getUniqueId())) return;
+
+        String cmd = e.getMessage().toLowerCase().split(" ")[0];
+        boolean allowed = cmd.equals("/msg") || cmd.equals("/tell")
+                || cmd.equals("/r") || cmd.equals("/m") || cmd.equals("/w");
+        if (!allowed) {
+            e.setCancelled(true);
+            p.sendMessage("§cВо время проверки команды запрещены.");
+        }
+    }
+
+    // замороженному нельзя наносить урон
+    @EventHandler
+    public void onDamage(EntityDamageEvent e) {
+        if (e.getEntity() instanceof Player) {
+            Player p = (Player) e.getEntity();
+            if (frozen.containsKey(p.getUniqueId())) {
+                e.setCancelled(true);
+            }
+        }
+    }
+
+    // игрок вышел во время проверки — сообщаем админу
+    @EventHandler
+    public void onQuit(PlayerQuitEvent e) {
+        UUID checkerId = frozen.remove(e.getPlayer().getUniqueId());
+        if (checkerId != null) {
+            Player checker = Bukkit.getPlayer(checkerId);
+            if (checker != null) {
+                checker.sendMessage("§c§lИгрок " + e.getPlayer().getName()
+                        + " вышел с сервера во время проверки!");
+            }
+        }
     }
 }
