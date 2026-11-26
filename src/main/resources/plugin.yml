@@ -1,1 +1,9 @@
-
+name: TeamProTalisman
+version: '1.0.0'
+main: com.example.talisman.TeamProTalisman
+api-version: '1.20'
+commands:
+  sphere:
+    description: Создаёт сферу из частиц вокруг игрока
+  talisman:
+    description: Выдаёт талисман удачи
