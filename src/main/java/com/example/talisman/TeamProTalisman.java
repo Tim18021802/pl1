@@ -1,8 +1,6 @@
-
 package com.example.talisman;
 
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -63,7 +61,6 @@ public class TeamProTalisman extends JavaPlugin {
     }
 
     void activate(Player p, ItemStack item) {
-        // проверка перезарядки
         long now = System.currentTimeMillis();
         Long last = cooldowns.get(p.getUniqueId());
         if (last != null && now - last < cooldownSeconds * 1000L) {
@@ -76,7 +73,7 @@ public class TeamProTalisman extends JavaPlugin {
         String name = item.getItemMeta().getDisplayName();
         if (name.contains("удачи")) {
             p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, effectSeconds * 20, 1));
-            p.addPotionEffect(new PotionEffect(new PotionEffectType.JUMP, effectSeconds * 20, 1));
+            p.addPotionEffect(new PotionEffect(PotionEffectType.JUMP, effectSeconds * 20, 1));
             p.sendMessage("§dТалисман удачи активирован!");
         } else if (name.contains("силы")) {
             p.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, effectSeconds * 20, 0));
@@ -118,7 +115,6 @@ public class TeamProTalisman extends JavaPlugin {
 
         if (command.getName().equalsIgnoreCase("talisman")) {
             if (args.length == 0) {
-                // выдать себе талисман удачи
                 giveTalisman(p, "luck");
                 p.sendMessage("§aТалисман выдан!");
                 return true;
@@ -143,7 +139,6 @@ public class TeamProTalisman extends JavaPlugin {
             }
 
             if (sub.equals("test")) {
-                // тестовый набор: все три талисмана себе
                 giveTalisman(p, "luck");
                 giveTalisman(p, "power");
                 giveTalisman(p, "speed");
@@ -151,7 +146,6 @@ public class TeamProTalisman extends JavaPlugin {
                 return true;
             }
 
-            // если ввели /talisman luck|power|speed — выдать себе конкретный
             if (sub.equals("luck") || sub.equals("power") || sub.equals("speed")) {
                 giveTalisman(p, sub);
                 p.sendMessage("§aТалисман выдан!");
